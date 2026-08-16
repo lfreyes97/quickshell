@@ -1,0 +1,4 @@
+singleton Theme 1.0 Theme.qml
+singleton PopupManager 1.0 PopupManager.qml
+singleton Notifications 1.0 Notifications.qml
+singleton Switcher 1.0 Switcher.qml
