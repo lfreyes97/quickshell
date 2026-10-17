@@ -79,6 +79,22 @@ PopupCard {
         checked: Notifications.dnd
         onToggled: value => Notifications.dnd = value
     }
+    ToggleRow {
+        width: parent.width
+        iconSource: "file://" + Quickshell.shellPath("assets/caffeine-symbolic.svg")
+        label: "Mantener despierta"
+        sublabel: Caffeine.enabled ? "Bloqueo y suspensión inhibidos" : ""
+        checked: Caffeine.enabled
+        onToggled: value => Caffeine.enabled = value
+    }
+    ToggleRow {
+        width: parent.width
+        iconSource: "file://" + Quickshell.shellPath("assets/dark-mode-symbolic.svg")
+        label: "Modo oscuro"
+        checked: Theme.dark
+        onToggled: value => Quickshell.execDetached(["gsettings", "set",
+            "org.gnome.desktop.interface", "color-scheme", value ? "prefer-dark" : "prefer-light"])
+    }
 
     Rectangle { width: parent.width; height: 1; color: Theme.border }
 

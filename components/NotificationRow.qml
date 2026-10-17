@@ -12,6 +12,10 @@ Item {
     property string appIcon: ""
     property string image: ""
     property var time: null
+    // true cuando la fila se usa como toast: flota sola y necesita tarjeta
+    // propia; en el historial del calendario ya hay popup detrás y basta
+    // el tinte sutil que separa filas.
+    property bool elevated: false
     signal dismissRequested
 
     implicitHeight: layout.implicitHeight + 16
@@ -20,7 +24,10 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: Theme.radius - 6
-        color: Theme.withAlpha(Theme.dark ? "#ffffff" : "#000000", Theme.dark ? 0.06 : 0.04)
+        color: root.elevated ? Theme.toastBg
+                             : Theme.withAlpha(Theme.dark ? "#ffffff" : "#000000", Theme.dark ? 0.06 : 0.04)
+        border.width: root.elevated ? 1 : 0
+        border.color: Theme.border
     }
 
     RowLayout {
@@ -30,7 +37,7 @@ Item {
         spacing: 8
 
         SymbolicIcon {
-            name: root.appIcon.length > 0 ? root.appIcon : "notification-symbolic"
+            name: root.appIcon.length > 0 ? root.appIcon : "dialog-information-symbolic"
             Layout.alignment: Qt.AlignTop
         }
 

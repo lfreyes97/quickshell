@@ -83,12 +83,14 @@ PopupCard {
         width: parent.width
         spacing: 8
         IconImage {
+            Layout.leftMargin: 10
             source: popup.hasWin ? Quickshell.iconPath(popup.activeWin.class, false) : ""
             implicitSize: 22
             visible: status === Image.Ready
         }
         ColumnLayout {
             Layout.fillWidth: true
+            Layout.rightMargin: 10
             spacing: 0
             Text {
                 Layout.fillWidth: true
@@ -172,39 +174,42 @@ PopupCard {
         font.pixelSize: 10
         font.weight: Font.DemiBold
     }
-    Row {
+    Item {
         width: parent.width
-        spacing: 6
-        ChipButton { text: "Dwindle (bsp)"; selected: popup.currentLayout === "dwindle"; onClicked: popup.setLayout("dwindle") }
-        ChipButton { text: "Master"; selected: popup.currentLayout === "master"; onClicked: popup.setLayout("master") }
+        implicitHeight: layoutsRow.implicitHeight
+
+        Row {
+            id: layoutsRow
+            x: 10
+            spacing: 6
+            ChipButton { text: "Dwindle (bsp)"; selected: popup.currentLayout === "dwindle"; onClicked: popup.setLayout("dwindle") }
+            ChipButton { text: "Master"; selected: popup.currentLayout === "master"; onClicked: popup.setLayout("master") }
+        }
     }
 
     // ---- Asistente dwindle (bsp) ----
     Text {
         visible: popup.currentLayout === "dwindle"
-        text: "Asistente dwindle (bsp)"
+        text: "Preselección de split"
         color: Theme.fgDim
         font.family: Theme.fontFamily
         font.pixelSize: 10
         font.weight: Font.DemiBold
     }
-    Text {
+    Item {
         width: parent.width
+        implicitHeight: preselectRow.implicitHeight
         visible: popup.currentLayout === "dwindle"
-        text: "Preseleccioná el lado por donde entra la próxima ventana:"
-        color: Theme.fgDim
-        font.family: Theme.fontFamily
-        font.pixelSize: 10
-        wrapMode: Text.WordWrap
-    }
-    Row {
-        width: parent.width
-        visible: popup.currentLayout === "dwindle"
-        spacing: 6
-        ChipButton { icon: "pan-start-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect l\")") }
-        ChipButton { icon: "pan-up-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect u\")") }
-        ChipButton { icon: "pan-down-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect d\")") }
-        ChipButton { icon: "pan-end-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect r\")") }
+
+        Row {
+            id: preselectRow
+            x: 10
+            spacing: 6
+            ChipButton { icon: "pan-start-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect l\")") }
+            ChipButton { icon: "pan-up-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect u\")") }
+            ChipButton { icon: "pan-down-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect d\")") }
+            ChipButton { icon: "pan-end-symbolic"; onClicked: popup.act("hl.dsp.layout(\"preselect r\")") }
+        }
     }
     ActionRow {
         width: parent.width
@@ -232,23 +237,33 @@ PopupCard {
         font.pixelSize: 10
         font.weight: Font.DemiBold
     }
-    Grid {
+    Item {
         width: parent.width
+        implicitHeight: wsGrid.implicitHeight
         enabled: popup.hasWin
         opacity: popup.hasWin ? 1 : 0.4
-        columns: 5
-        spacing: 6
         Behavior on opacity { NumberAnimation { duration: 100 } }
-        Repeater {
-            model: 10
-            delegate: ChipButton {
-                required property int index
-                readonly property int wsId: index + 1
-                readonly property bool here: popup.hasWin && popup.activeWin.workspace && popup.activeWin.workspace.id === wsId
-                text: "" + ((index + 1) % 10)
-                selected: here
-                enabled: !here
-                onClicked: popup.moveTo(wsId)
+
+        GridLayout {
+            id: wsGrid
+            x: 10
+            width: parent.width - 20
+            columns: 5
+            columnSpacing: 6
+            rowSpacing: 6
+
+            Repeater {
+                model: 10
+                delegate: ChipButton {
+                    required property int index
+                    readonly property int wsId: index + 1
+                    readonly property bool here: popup.hasWin && popup.activeWin.workspace && popup.activeWin.workspace.id === wsId
+                    Layout.fillWidth: true
+                    text: "" + ((index + 1) % 10)
+                    selected: here
+                    enabled: !here
+                    onClicked: popup.moveTo(wsId)
+                }
             }
         }
     }

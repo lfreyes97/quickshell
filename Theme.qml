@@ -64,6 +64,9 @@ QtObject {
 
     readonly property color barBg:     withAlpha(dark ? "#1e1e1e" : "#ffffff", theme.barAlpha)
     readonly property color popupBg:   withAlpha(dark ? "#2d2d2d" : "#ffffff", theme.popupAlpha)
+    // Los toasts flotan directo sobre el escritorio (sin popup detrás), así
+    // que necesitan una tarjeta propia casi opaca, como en GNOME.
+    readonly property color toastBg:   withAlpha(dark ? "#2d2d2d" : "#ffffff", 0.94)
     readonly property color border:    withAlpha(dark ? "#ffffff" : "#000000", dark ? 0.08 : 0.10)
     readonly property color hoverBg:   withAlpha(dark ? "#ffffff" : "#000000", dark ? theme.hoverAlphaDark : theme.hoverAlphaLight)
     readonly property color activeBg:  withAlpha(theme.accent, theme.activeAlpha)

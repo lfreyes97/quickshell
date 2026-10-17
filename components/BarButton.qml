@@ -17,7 +17,7 @@ Rectangle {
     implicitHeight: Theme.barHeight - 10
     implicitWidth: row.implicitWidth + 16
     radius: Theme.radius - 4
-    color: (btn.active || mouse.containsMouse) ? Theme.hoverBg : "transparent"
+    color: btn.active ? Theme.activeBg : (mouse.containsMouse ? Theme.hoverBg : "transparent")
 
     Behavior on color { ColorAnimation { duration: 100 } }
 

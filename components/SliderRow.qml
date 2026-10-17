@@ -19,6 +19,8 @@ Item {
 
     RowLayout {
         anchors.fill: parent
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
         spacing: 10
 
         SymbolicIcon {
@@ -46,11 +48,33 @@ Item {
                 radius: 3
                 color: Theme.accent
             }
+            Rectangle {
+                id: knob
+                width: 13
+                height: 13
+                radius: width / 2
+                anchors.verticalCenter: parent.verticalCenter
+                x: Math.max(0, Math.min(track.width - width,
+                        track.width * Math.min(1, Math.max(0, root.value)) - width / 2))
+                color: "#ffffff"
+                border.width: 1
+                border.color: Theme.withAlpha("#000000", 0.18)
+            }
             MouseArea {
                 anchors.fill: parent
                 onPressed: mouse => root.setFromX(mouse.x, track.width)
                 onPositionChanged: mouse => { if (pressed) root.setFromX(mouse.x, track.width) }
             }
+        }
+
+        Text {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: 34
+            horizontalAlignment: Text.AlignRight
+            text: Math.round(Math.min(1, Math.max(0, root.value)) * 100) + "%"
+            color: Theme.fg
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
         }
     }
 }

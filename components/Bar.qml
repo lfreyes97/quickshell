@@ -21,20 +21,33 @@ PanelWindow {
         color: Theme.barBg
 
         RowLayout {
-            anchors.fill: parent
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+            }
             anchors.leftMargin: 8
-            anchors.rightMargin: 8
             spacing: 4
 
             ActivitiesButton {}
             OverviewButton {}
             WindowMenuButton {}
+        }
 
-            Item { Layout.fillWidth: true }
+        // Reloj al centro real de la barra (no centrado entre los grupos
+        // izq/der, que tienen anchos distintos).
+        ClockWidget {
+            anchors.centerIn: parent
+        }
 
-            ClockWidget {}
-
-            Item { Layout.fillWidth: true }
+        RowLayout {
+            anchors {
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+            anchors.rightMargin: 8
+            spacing: 4
 
             Tray {}
             WallpaperButton {}

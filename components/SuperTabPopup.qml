@@ -39,12 +39,13 @@ PanelWindow {
                     required property int index
                     width: 52
                     height: 52
-                    radius: Theme.radius - 8
+                    radius: Theme.radius - 6
                     color: index === Switcher.wsIndex ? Theme.activeBg : "transparent"
                     border.width: index === Switcher.wsIndex ? 2 : 1
                     border.color: index === Switcher.wsIndex ? Theme.accent : Theme.border
 
                     Behavior on color { ColorAnimation { duration: 100 } }
+                    Behavior on border.color { ColorAnimation { duration: 100 } }
 
                     Text {
                         anchors.centerIn: parent

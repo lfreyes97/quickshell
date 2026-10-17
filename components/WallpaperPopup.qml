@@ -4,28 +4,19 @@ import QtQuick
 import ".."
 
 // Selector de fondo de pantalla: lista las imágenes de ~/Pictures/Wallpapers
-// y las aplica con awww (awww-daemon arranca solo, ver
-// hypr/modules/autostart.lua).
+// y las aplica con awww (ver Wallpaper.qml: recuerda el último elegido y lo
+// re-aplica al iniciar la shell).
 PopupCard {
     id: popup
     popupName: "wallpapers"
     align: "right"
     cardWidth: 320
 
-    readonly property string wallpaperDir: "/home/home/Pictures/Wallpapers"
+    readonly property string wallpaperDir: (Quickshell.env("HOME") || "/home/luis") + "/Pictures/Wallpapers"
     property var files: []
-    property string current: ""
 
-    function refresh() {
-        listProc.running = true
-        queryProc.running = true
-    }
+    function refresh() { listProc.running = true }
     onVisibleChanged: if (popup.visible) popup.refresh()
-
-    function apply(path) {
-        popup.current = path
-        Quickshell.execDetached(["awww", "img", path, "--transition-type", "simple", "--transition-duration", "1"])
-    }
 
     Process {
         id: listProc
@@ -35,16 +26,6 @@ PopupCard {
                 var lines = text.split("\n").filter(l => /\.(png|jpe?g|webp|bmp|gif)$/i.test(l))
                 lines.sort()
                 popup.files = lines
-            }
-        }
-    }
-    Process {
-        id: queryProc
-        command: ["awww", "query"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var m = text.match(/image:\s*(\S+)/)
-                popup.current = m ? m[1] : ""
             }
         }
     }
@@ -83,7 +64,7 @@ PopupCard {
                 radius: Theme.radius - 8
                 clip: true
                 color: Theme.hoverBg
-                border.width: popup.current === tile.modelData ? 2 : 0
+                border.width: Wallpaper.current === tile.modelData ? 2 : 0
                 border.color: Theme.accent
 
                 Image {
@@ -97,7 +78,7 @@ PopupCard {
 
                 MouseArea {
                     anchors.fill: parent
-                    onClicked: popup.apply(tile.modelData)
+                    onClicked: Wallpaper.apply(tile.modelData)
                 }
             }
         }

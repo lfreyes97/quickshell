@@ -33,6 +33,7 @@ BarButton {
         if (!pill.hasBattery) return ""
         var pct = pill.battery.percentage * 100
         var step = Math.min(100, Math.max(0, Math.round(pct / 10) * 10))
+        if (step === 100 && pill.charging) return "battery-level-100-charged-symbolic"
         return "battery-level-" + step + (pill.charging ? "-charging" : "") + "-symbolic"
     }
 
