@@ -1,0 +1,77 @@
+import QtQuick
+import QtQuick.Layouts
+import ".."
+
+// Quick toggle tipo "píldora" de GNOME 46: icono + título + estado. Encendido
+// se pinta con el acento; apagado, con la superficie neutra del popup.
+Rectangle {
+    id: root
+    property string icon: ""
+    property url iconSource: ""
+    property string label: ""
+    property string sublabel: ""
+    property bool checked: false
+    signal toggled(bool value)
+
+    implicitHeight: 52
+    implicitWidth: 160
+    radius: height / 2
+    color: root.checked ? (mouse.containsMouse ? Theme.accentHover : Theme.accent)
+                        : (mouse.containsMouse ? Theme.cardHoverBg : Theme.cardBg)
+    opacity: root.enabled ? 1 : 0.4
+    scale: mouse.pressed ? 0.97 : 1
+
+    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on opacity { NumberAnimation { duration: 100 } }
+    Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+
+    readonly property color contentColor: root.checked ? Theme.accentFg : Theme.fg
+
+    RowLayout {
+        anchors.fill: parent
+        anchors.leftMargin: 16
+        anchors.rightMargin: 14
+        spacing: 10
+
+        SymbolicIcon {
+            name: root.icon
+            source: root.iconSource
+            size: 16
+            tint: root.contentColor
+            Layout.alignment: Qt.AlignVCenter
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            spacing: 1
+            Text {
+                Layout.fillWidth: true
+                text: root.label
+                color: root.contentColor
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
+            Text {
+                Layout.fillWidth: true
+                visible: root.sublabel.length > 0
+                text: root.sublabel
+                color: root.contentColor
+                opacity: 0.75
+                font.family: Theme.fontFamily
+                font.pixelSize: 10
+                elide: Text.ElideRight
+            }
+        }
+    }
+
+    MouseArea {
+        id: mouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.toggled(!root.checked)
+    }
+}

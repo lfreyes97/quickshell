@@ -37,8 +37,18 @@ PanelWindow {
     implicitWidth: popup.cardWidth
     implicitHeight: column.implicitHeight + 24
 
+    // Entrada suave (fade + leve deslizamiento) cada vez que se abre.
+    onVisibleChanged: if (popup.visible) openAnim.restart()
+    ParallelAnimation {
+        id: openAnim
+        NumberAnimation { target: card; property: "opacity"; from: 0; to: 1; duration: 140; easing.type: Easing.OutCubic }
+        NumberAnimation { target: card; property: "y"; from: -6; to: 0; duration: 180; easing.type: Easing.OutCubic }
+    }
+
     Rectangle {
-        anchors.fill: parent
+        id: card
+        width: parent.width
+        height: parent.height
         radius: Theme.radius
         color: Theme.popupBg
         border.width: 1

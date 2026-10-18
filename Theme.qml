@@ -71,6 +71,13 @@ QtObject {
     readonly property color hoverBg:   withAlpha(dark ? "#ffffff" : "#000000", dark ? theme.hoverAlphaDark : theme.hoverAlphaLight)
     readonly property color activeBg:  withAlpha(theme.accent, theme.activeAlpha)
     readonly property color trackBg:   withAlpha(dark ? "#ffffff" : "#000000", dark ? 0.16 : 0.12)
+    // Superficie de los botones/tiles dentro de un popup (los quick toggles
+    // apagados, los tiles del gestor de ventanas, etc.).
+    readonly property color cardBg:    withAlpha(dark ? "#ffffff" : "#000000", dark ? 0.08 : 0.05)
+    readonly property color cardHoverBg: withAlpha(dark ? "#ffffff" : "#000000", dark ? 0.14 : 0.09)
+    // Texto/iconos sobre el color de acento (tiles activos).
+    readonly property color accentFg:  "#ffffff"
+    readonly property color accentHover: Qt.lighter(theme.accent, 1.12)
 
     // ---------------------------------------------------------------
     // Watchers de gsettings (color-scheme + accent-color), en vivo

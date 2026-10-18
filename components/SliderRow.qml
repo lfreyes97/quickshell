@@ -2,36 +2,48 @@ import QtQuick
 import QtQuick.Layouts
 import ".."
 
-// Fila de slider estilo GNOME Quick Settings (icono + barra arrastrable).
+// Fila de slider estilo GNOME Quick Settings: icono (clickeable, p. ej.
+// para silenciar) + barra arrastrable que también responde a la rueda.
 Item {
     id: root
     property string icon: ""
     property real value: 0 // 0..1
+    property bool muted: false
+    property bool showValue: true
     signal valueEdited(real v)
+    signal iconClicked
 
-    implicitHeight: 32
+    implicitHeight: 36
 
-    function setFromX(x, w) {
-        var v = Math.max(0, Math.min(1, x / w))
+    readonly property real clamped: Math.min(1, Math.max(0, root.value))
+
+    function setValue(v) {
+        v = Math.max(0, Math.min(1, v))
         root.value = v
         root.valueEdited(v)
     }
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
-        spacing: 10
+        anchors.leftMargin: 2
+        anchors.rightMargin: 6
+        spacing: 8
 
-        SymbolicIcon {
-            name: root.icon
+        IconButton {
+            icon: root.icon
+            flat: true
+            tint: root.muted ? Theme.fgDim : Theme.fg
             Layout.alignment: Qt.AlignVCenter
+            onClicked: root.iconClicked()
         }
 
         Item {
             id: track
             Layout.fillWidth: true
-            Layout.preferredHeight: 20
+            Layout.preferredHeight: 24
+
+            readonly property bool active: area.containsMouse || area.pressed
+            readonly property real knobSize: track.active ? 18 : 16
 
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
@@ -43,38 +55,46 @@ Item {
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.left: parent.left
-                width: Math.max(6, parent.width * Math.min(1, Math.max(0, root.value)))
+                width: Math.max(6, knob.x + knob.width / 2)
                 height: 6
                 radius: 3
-                color: Theme.accent
+                color: root.muted ? Theme.fgDim : Theme.accent
+                Behavior on color { ColorAnimation { duration: 120 } }
             }
             Rectangle {
                 id: knob
-                width: 13
-                height: 13
+                width: track.knobSize
+                height: track.knobSize
                 radius: width / 2
                 anchors.verticalCenter: parent.verticalCenter
-                x: Math.max(0, Math.min(track.width - width,
-                        track.width * Math.min(1, Math.max(0, root.value)) - width / 2))
+                x: (track.width - width) * root.clamped
                 color: "#ffffff"
                 border.width: 1
                 border.color: Theme.withAlpha("#000000", 0.18)
+                Behavior on width { NumberAnimation { duration: 90 } }
+                Behavior on height { NumberAnimation { duration: 90 } }
             }
             MouseArea {
+                id: area
                 anchors.fill: parent
-                onPressed: mouse => root.setFromX(mouse.x, track.width)
-                onPositionChanged: mouse => { if (pressed) root.setFromX(mouse.x, track.width) }
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onPressed: mouse => root.setValue(mouse.x / track.width)
+                onPositionChanged: mouse => { if (pressed) root.setValue(mouse.x / track.width) }
+                onWheel: wheel => root.setValue(root.clamped + (wheel.angleDelta.y > 0 ? 0.05 : -0.05))
             }
         }
 
         Text {
+            visible: root.showValue
             Layout.alignment: Qt.AlignVCenter
-            Layout.preferredWidth: 34
+            Layout.preferredWidth: 30
             horizontalAlignment: Text.AlignRight
-            text: Math.round(Math.min(1, Math.max(0, root.value)) * 100) + "%"
-            color: Theme.fg
+            text: Math.round(root.clamped * 100) + "%"
+            color: Theme.fgDim
             font.family: Theme.fontFamily
             font.pixelSize: 11
+            font.features: { "tnum": 1 }
         }
     }
 }

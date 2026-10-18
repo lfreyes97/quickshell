@@ -2,19 +2,27 @@ import Quickshell
 import Quickshell.Networking
 import Quickshell.Bluetooth
 import Quickshell.Services.Pipewire
+import Quickshell.Services.UPower
 import Quickshell.Io
 import QtQuick
+import QtQuick.Layouts
 import ".."
 
-// Panel de Quick Settings, como el que abre GNOME al hacer click en los
-// indicadores de la derecha: redes, bluetooth, no molestar, volumen,
-// brillo y el menú de energía, todo en un solo lugar.
+// Panel de Quick Settings al estilo GNOME 46: fila de sistema arriba
+// (batería, configuración, bloqueo, energía), sliders de volumen y brillo
+// y una grilla de quick toggles tipo píldora.
 PopupCard {
     id: popup
     popupName: "quicksettings"
     align: "right"
-    cardWidth: 300
+    cardWidth: 360
 
+    property bool powerMenuOpen: false
+    onVisibleChanged: if (!popup.visible) popup.powerMenuOpen = false
+
+    function run(cmd) { PopupManager.close(); Quickshell.execDetached(cmd) }
+
+    // ---- Wi-Fi ----
     property var wifiDevice: null
     property string wifiNetworkName: ""
     function findWifiDevice() {
@@ -34,9 +42,32 @@ PopupCard {
     }
     Timer { interval: 5000; running: true; repeat: true; onTriggered: popup.findWifiDevice() }
 
-    readonly property var audio: Pipewire.defaultAudioSink ? Pipewire.defaultAudioSink.audio : null
+    // ---- Bluetooth ----
+    readonly property var btAdapter: Bluetooth.defaultAdapter
+    readonly property bool btOn: popup.btAdapter ? popup.btAdapter.enabled : false
+    readonly property string btConnectedName: {
+        if (!popup.btAdapter || !popup.btAdapter.devices) return ""
+        var devs = popup.btAdapter.devices.values
+        for (var i = 0; i < devs.length; i++)
+            if (devs[i].connected) return devs[i].name
+        return ""
+    }
 
+    // ---- Audio ----
+    readonly property var sink: Pipewire.defaultAudioSink
+    readonly property var audio: popup.sink ? popup.sink.audio : null
+    // Sin tracker, Pipewire no mantiene vivas las propiedades del nodo
+    // (volumen/mute) y el slider no reflejaría cambios hechos por fuera.
+    PwObjectTracker { objects: popup.sink ? [popup.sink] : [] }
+
+    // ---- Batería ----
+    readonly property var battery: UPower.displayDevice
+    readonly property bool hasBattery: popup.battery && popup.battery.isPresent
+    readonly property bool charging: popup.hasBattery && popup.battery.state === UPowerDeviceState.Charging
+
+    // ---- Brillo ----
     property real brightness: 0.5
+    property bool hasBrightness: false
     function refreshBrightness() { brightnessRead.running = true }
     Process {
         id: brightnessRead
@@ -46,7 +77,7 @@ PopupCard {
                 var parts = text.trim().split(",")
                 if (parts.length >= 4) {
                     var pct = parseInt(parts[3].replace("%", ""))
-                    if (!isNaN(pct)) popup.brightness = pct / 100
+                    if (!isNaN(pct)) { popup.brightness = pct / 100; popup.hasBrightness = true }
                 }
             }
         }
@@ -56,106 +87,171 @@ PopupCard {
         popup.refreshBrightness()
     }
 
-    // ---- Wi-Fi / Bluetooth / No molestar ----
-    ToggleRow {
+    // =================================================================
+    // Fila de sistema
+    // =================================================================
+    RowLayout {
         width: parent.width
-        icon: Networking.wifiEnabled ? "network-wireless-symbolic" : "network-wireless-disabled-symbolic"
-        label: "Wi-Fi"
-        sublabel: popup.wifiDevice && popup.wifiDevice.connected ? popup.wifiNetworkName : ""
-        checked: Networking.wifiEnabled
-        onToggled: value => Networking.wifiEnabled = value
-    }
-    ToggleRow {
-        width: parent.width
-        icon: Bluetooth.defaultAdapter && Bluetooth.defaultAdapter.enabled ? "bluetooth-active-symbolic" : "bluetooth-disabled-symbolic"
-        label: "Bluetooth"
-        checked: Bluetooth.defaultAdapter ? Bluetooth.defaultAdapter.enabled : false
-        onToggled: value => { if (Bluetooth.defaultAdapter) Bluetooth.defaultAdapter.enabled = value }
-    }
-    ToggleRow {
-        width: parent.width
-        icon: "notifications-disabled-symbolic"
-        label: "No molestar"
-        checked: Notifications.dnd
-        onToggled: value => Notifications.dnd = value
-    }
-    ToggleRow {
-        width: parent.width
-        iconSource: "file://" + Quickshell.shellPath("assets/caffeine-symbolic.svg")
-        label: "Mantener despierta"
-        sublabel: Caffeine.enabled ? "Bloqueo y suspensión inhibidos" : ""
-        checked: Caffeine.enabled
-        onToggled: value => Caffeine.enabled = value
-    }
-    ToggleRow {
-        width: parent.width
-        iconSource: "file://" + Quickshell.shellPath("assets/dark-mode-symbolic.svg")
-        label: "Modo oscuro"
-        checked: Theme.dark
-        onToggled: value => Quickshell.execDetached(["gsettings", "set",
-            "org.gnome.desktop.interface", "color-scheme", value ? "prefer-dark" : "prefer-light"])
+        spacing: 6
+
+        Rectangle {
+            visible: popup.hasBattery
+            implicitHeight: 34
+            implicitWidth: batRow.implicitWidth + 24
+            radius: height / 2
+            color: Theme.cardBg
+            Row {
+                id: batRow
+                anchors.centerIn: parent
+                spacing: 6
+                SymbolicIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: {
+                        if (!popup.hasBattery) return ""
+                        var step = Math.min(100, Math.max(0, Math.round(popup.battery.percentage * 10) * 10))
+                        if (step === 100 && popup.charging) return "battery-level-100-charged-symbolic"
+                        return "battery-level-" + step + (popup.charging ? "-charging" : "") + "-symbolic"
+                    }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: popup.hasBattery ? Math.round(popup.battery.percentage * 100) + "%" : ""
+                    color: Theme.fg
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
+            }
+        }
+
+        Item { Layout.fillWidth: true }
+
+        IconButton {
+            icon: "preferences-system-symbolic"
+            onClicked: popup.run(["gnome-control-center"])
+        }
+        IconButton {
+            icon: "system-lock-screen-symbolic"
+            onClicked: popup.run(["hyprlock"])
+        }
+        IconButton {
+            icon: "system-shutdown-symbolic"
+            checked: popup.powerMenuOpen
+            onClicked: popup.powerMenuOpen = !popup.powerMenuOpen
+        }
     }
 
-    Rectangle { width: parent.width; height: 1; color: Theme.border }
+    // ---- Menú de energía (se despliega bajo la fila de sistema) ----
+    Item {
+        width: parent.width
+        height: popup.powerMenuOpen ? powerCol.implicitHeight : 0
+        visible: height > 0
+        clip: true
+        Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
-    // ---- Volumen / Brillo ----
+        Rectangle {
+            id: powerCard
+            width: parent.width
+            height: powerCol.implicitHeight
+            radius: Theme.radius - 2
+            color: Theme.cardBg
+
+            Column {
+                id: powerCol
+                width: parent.width
+                topPadding: 4
+                bottomPadding: 4
+                ActionRow { width: parent.width; icon: "weather-clear-night-symbolic"; label: "Suspender"; onClicked: popup.run(["systemctl", "suspend"]) }
+                ActionRow { width: parent.width; icon: "system-reboot-symbolic"; label: "Reiniciar"; onClicked: popup.run(["systemctl", "reboot"]) }
+                ActionRow { width: parent.width; icon: "system-log-out-symbolic"; label: "Cerrar sesión"; onClicked: popup.run(["hyprctl", "dispatch", "exit"]) }
+                ActionRow { width: parent.width; icon: "system-shutdown-symbolic"; label: "Apagar"; tint: Theme.danger; onClicked: popup.run(["systemctl", "poweroff"]) }
+            }
+        }
+    }
+
+    // =================================================================
+    // Sliders
+    // =================================================================
     SliderRow {
         width: parent.width
+        muted: !popup.audio || popup.audio.muted
         icon: !popup.audio ? "audio-volume-muted-symbolic"
             : popup.audio.muted ? "audio-volume-muted-symbolic"
-            : popup.audio.volume > 0.5 ? "audio-volume-high-symbolic"
-            : popup.audio.volume > 0 ? "audio-volume-medium-symbolic" : "audio-volume-low-symbolic"
+            : popup.audio.volume > 0.66 ? "audio-volume-high-symbolic"
+            : popup.audio.volume > 0.33 ? "audio-volume-medium-symbolic"
+            : popup.audio.volume > 0 ? "audio-volume-low-symbolic" : "audio-volume-muted-symbolic"
         value: popup.audio ? popup.audio.volume : 0
         onValueEdited: v => Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", v.toFixed(2)])
+        onIconClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
     }
     SliderRow {
         width: parent.width
+        visible: popup.hasBrightness
         icon: "display-brightness-symbolic"
         value: popup.brightness
         onValueEdited: v => {
             popup.brightness = v
-            Quickshell.execDetached(["brightnessctl", "set", Math.round(v * 100) + "%"])
+            Quickshell.execDetached(["brightnessctl", "set", Math.max(1, Math.round(v * 100)) + "%"])
         }
     }
 
-    Rectangle { width: parent.width; height: 1; color: Theme.border }
+    // =================================================================
+    // Quick toggles
+    // =================================================================
+    GridLayout {
+        width: parent.width
+        columns: 2
+        columnSpacing: 8
+        rowSpacing: 8
 
-    // ---- Energía ----
-    ActionRow {
-        width: parent.width
-        icon: "preferences-system-symbolic"
-        label: "Configuración"
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["gnome-control-center"]) }
-    }
-    ActionRow {
-        width: parent.width
-        icon: "system-lock-screen-symbolic"
-        label: "Bloquear"
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["hyprlock"]) }
-    }
-    ActionRow {
-        width: parent.width
-        icon: "weather-clear-night-symbolic"
-        label: "Suspender"
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["systemctl", "suspend"]) }
-    }
-    ActionRow {
-        width: parent.width
-        icon: "system-reboot-symbolic"
-        label: "Reiniciar"
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["systemctl", "reboot"]) }
-    }
-    ActionRow {
-        width: parent.width
-        icon: "system-log-out-symbolic"
-        label: "Cerrar sesión"
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["hyprctl", "dispatch", "exit"]) }
-    }
-    ActionRow {
-        width: parent.width
-        icon: "system-shutdown-symbolic"
-        label: "Apagar"
-        tint: Theme.danger
-        onClicked: { PopupManager.close(); Quickshell.execDetached(["systemctl", "poweroff"]) }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            icon: Networking.wifiEnabled ? "network-wireless-symbolic" : "network-wireless-disabled-symbolic"
+            label: "Wi-Fi"
+            sublabel: !Networking.wifiEnabled ? "Apagado"
+                : (popup.wifiDevice && popup.wifiDevice.connected && popup.wifiNetworkName) ? popup.wifiNetworkName
+                : "Sin conexión"
+            checked: Networking.wifiEnabled
+            onToggled: value => Networking.wifiEnabled = value
+        }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            enabled: popup.btAdapter !== null
+            icon: popup.btOn ? "bluetooth-active-symbolic" : "bluetooth-disabled-symbolic"
+            label: "Bluetooth"
+            sublabel: !popup.btOn ? "Apagado" : (popup.btConnectedName || "Encendido")
+            checked: popup.btOn
+            onToggled: value => { if (popup.btAdapter) popup.btAdapter.enabled = value }
+        }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            icon: Notifications.dnd ? "notifications-disabled-symbolic" : "notification-symbolic"
+            label: "No molestar"
+            sublabel: Notifications.dnd ? "Activado" : "Desactivado"
+            checked: Notifications.dnd
+            onToggled: value => Notifications.dnd = value
+        }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            iconSource: "file://" + Quickshell.shellPath("assets/dark-mode-symbolic.svg")
+            label: "Estilo oscuro"
+            sublabel: Theme.dark ? "Activado" : "Desactivado"
+            checked: Theme.dark
+            onToggled: value => Quickshell.execDetached(["gsettings", "set",
+                "org.gnome.desktop.interface", "color-scheme", value ? "prefer-dark" : "prefer-light"])
+        }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            iconSource: "file://" + Quickshell.shellPath("assets/caffeine-symbolic.svg")
+            label: "Cafeína"
+            sublabel: Caffeine.enabled ? "Sin suspensión" : "Desactivado"
+            checked: Caffeine.enabled
+            onToggled: value => Caffeine.enabled = value
+        }
     }
 }

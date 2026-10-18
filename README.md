@@ -47,3 +47,7 @@ Edit `Theme.qml` to adjust:
 - `barAlpha` / `popupAlpha` – transparency levels
 - `barHeight`, `radius`, `iconSize` – layout tokens
 - `accentName` – accent color (blue, teal, green, etc.)
+
+## Design
+
+See [`DESIGN.md`](DESIGN.md) for the design policy: tokens, components, states, motion, icons and copy guidelines.
