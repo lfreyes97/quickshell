@@ -55,6 +55,13 @@ PanelWindow {
         }
     }
 
+    // Inhibidor de idle de "Caffeine": va atado a la barra (siempre visible)
+    // porque Wayland exige una superficie para crearlo.
+    IdleInhibitor {
+        window: bar
+        enabled: Caffeine.enabled
+    }
+
     DismissLayer {}
     CalendarPopup {}
     QuickSettingsPanel {}
