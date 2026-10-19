@@ -31,6 +31,7 @@ Item {
         SymbolicIcon { name: root.icon; tint: root.tint; Layout.alignment: Qt.AlignVCenter }
         Text {
             text: root.label
+            elide: Text.ElideRight
             color: root.tint
             font.family: Theme.fontFamily
             font.pixelSize: 12

@@ -59,6 +59,8 @@ PopupCard {
         Calendar { id: cal; anchors.fill: parent }
     }
 
+    MediaPlayer { width: parent.width }
+
     Rectangle { width: parent.width; height: 1; color: Theme.border }
 
     RowLayout {

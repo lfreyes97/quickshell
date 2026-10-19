@@ -1,0 +1,70 @@
+import Quickshell
+import Quickshell.Widgets
+import QtQuick
+import ".."
+
+// Icono de una app en el Dock: icono grande, puntos de ventanas abiertas
+// debajo (hasta 3; el primero alargado y con acento si la app tiene el
+// foco). Solo emite señales; la lógica vive en Dock.qml.
+Item {
+    id: item
+    // { key, entry, appId, windows: [Toplevel], pinned }
+    property var app
+    // Resaltado mientras su menú contextual está abierto.
+    property bool highlighted: false
+    readonly property string tipText: app.entry ? app.entry.name : app.appId
+    readonly property bool focused: app.windows.some(w => w.activated)
+    readonly property bool hovered: mouse.containsMouse
+
+    signal activated
+    signal newWindow
+    signal menuRequested
+
+    width: 52
+    height: 52
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.radius - 2
+        color: mouse.containsMouse || item.highlighted ? Theme.cardHoverBg : "transparent"
+        Behavior on color { ColorAnimation { duration: 100 } }
+    }
+
+    IconImage {
+        anchors.centerIn: parent
+        anchors.verticalCenterOffset: -3
+        implicitSize: 36
+        source: Quickshell.iconPath(item.app.entry ? item.app.entry.icon : item.app.appId, "application-x-executable")
+        scale: mouse.pressed ? 0.94 : 1
+        Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+    }
+
+    Row {
+        anchors { bottom: parent.bottom; bottomMargin: 3; horizontalCenter: parent.horizontalCenter }
+        spacing: 3
+        Repeater {
+            model: Math.min(3, item.app.windows.length)
+            delegate: Rectangle {
+                required property int index
+                width: item.focused && index === 0 ? 12 : 4
+                height: 4
+                radius: 2
+                color: item.focused ? Theme.accent : Theme.fg
+                Behavior on width { NumberAnimation { duration: 120 } }
+            }
+        }
+    }
+
+    MouseArea {
+        id: mouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+        onClicked: event => {
+            if (event.button === Qt.RightButton) item.menuRequested()
+            else if (event.button === Qt.MiddleButton) item.newWindow()
+            else item.activated()
+        }
+    }
+}

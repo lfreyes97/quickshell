@@ -71,4 +71,6 @@ PanelWindow {
     SuperTabPopup {}
     WallpaperPopup {}
     NotificationToasts {}
+    OsdPopup {}
+    Dock {}
 }
