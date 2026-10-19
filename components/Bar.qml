@@ -73,4 +73,5 @@ PanelWindow {
     NotificationToasts {}
     OsdPopup {}
     Dock {}
+    ScreenshotPopup {}
 }

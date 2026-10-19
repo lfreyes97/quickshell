@@ -3,7 +3,8 @@ import ".."
 
 // Botón chico tipo "chip": números de workspace y flechas del asistente de
 // tiling en WindowControlPopup. `dot` marca con un punto debajo del texto
-// (p. ej. workspace con ventanas).
+// (p. ej. workspace con ventanas). Con `icon` y `text` a la vez muestra
+// ambos (p. ej. "Puntero" en la captura de pantalla).
 Rectangle {
     id: chip
     property string text: ""
@@ -12,7 +13,7 @@ Rectangle {
     property bool dot: false
     signal clicked
 
-    implicitWidth: Math.max(32, label.implicitWidth + 16)
+    implicitWidth: Math.max(32, content.implicitWidth + 16)
     implicitHeight: 32
     radius: Theme.radius - 6
     color: chip.selected ? Theme.accent : (mouse.containsMouse ? Theme.cardHoverBg : Theme.cardBg)
@@ -25,23 +26,28 @@ Rectangle {
 
     readonly property color contentColor: chip.selected ? Theme.accentFg : Theme.fg
 
-    SymbolicIcon {
-        visible: chip.icon.length > 0
-        name: chip.icon
-        size: 14
-        tint: chip.contentColor
-        anchors.centerIn: parent
-    }
-    Text {
-        id: label
-        visible: chip.icon.length === 0
+    Row {
+        id: content
         anchors.centerIn: parent
         anchors.verticalCenterOffset: chip.dot ? -2 : 0
-        text: chip.text
-        color: chip.contentColor
-        font.family: Theme.fontFamily
-        font.pixelSize: 12
-        font.weight: chip.selected ? Font.Bold : Font.Normal
+        spacing: 6
+
+        SymbolicIcon {
+            visible: chip.icon.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            name: chip.icon
+            size: 14
+            tint: chip.contentColor
+        }
+        Text {
+            visible: chip.text.length > 0
+            anchors.verticalCenter: parent.verticalCenter
+            text: chip.text
+            color: chip.contentColor
+            font.family: Theme.fontFamily
+            font.pixelSize: 12
+            font.weight: chip.selected ? Font.Bold : Font.Normal
+        }
     }
     Rectangle {
         visible: chip.dot

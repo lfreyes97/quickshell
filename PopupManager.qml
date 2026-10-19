@@ -11,6 +11,11 @@ QtObject {
     function close() { mgr.current = "" }
 
     // Para atajos de Hyprland, p. ej. Super → `qs ipc call overview toggle`.
+    property IpcHandler screenshotIpc: IpcHandler {
+        target: "screenshot"
+        function toggle(): void { mgr.open("screenshot") }
+    }
+
     property IpcHandler overviewIpc: IpcHandler {
         target: "overview"
         function toggle(): void { mgr.open("overview") }

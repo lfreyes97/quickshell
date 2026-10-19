@@ -96,18 +96,6 @@ PopupCard {
     // Tras prender/apagar hyprsunset se relee el estado real.
     Timer { id: reprobe; interval: 300; onTriggered: probe.running = true }
 
-    // Captura de una región: se guarda en Imágenes/Capturas, se copia al
-    // portapapeles y avisa con una notificación (como GNOME).
-    function screenshot() {
-        popup.run(["sh", "-c",
-            "sleep 0.25; g=$(slurp) || exit 0; " +
-            ". \"${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs\" 2>/dev/null; " +
-            "d=\"${XDG_PICTURES_DIR:-$HOME/Pictures}/Capturas\"; mkdir -p \"$d\"; " +
-            "f=\"$d/Captura_$(date +%Y-%m-%d_%H-%M-%S).png\"; " +
-            "grim -g \"$g\" \"$f\" && wl-copy < \"$f\" && " +
-            "notify-send -a 'Captura de pantalla' -i \"$f\" 'Captura guardada' 'También se copió al portapapeles'"])
-    }
-
     // ---- Batería ----
     readonly property var battery: UPower.displayDevice
     readonly property bool hasBattery: popup.battery && popup.battery.isPresent
@@ -176,7 +164,7 @@ PopupCard {
 
         IconButton {
             icon: "applets-screenshooter-symbolic"
-            onClicked: popup.screenshot()
+            onClicked: PopupManager.open("screenshot")
         }
         IconButton {
             icon: "preferences-system-symbolic"
