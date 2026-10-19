@@ -18,7 +18,11 @@ PopupCard {
     cardWidth: 360
 
     property bool powerMenuOpen: false
-    onVisibleChanged: if (!popup.visible) popup.powerMenuOpen = false
+    property bool outputsOpen: false
+    onVisibleChanged: {
+        if (popup.visible) probe.running = true
+        else { popup.powerMenuOpen = false; popup.outputsOpen = false }
+    }
 
     function run(cmd) { PopupManager.close(); Quickshell.execDetached(cmd) }
 
@@ -59,6 +63,50 @@ PopupCard {
     // Sin tracker, Pipewire no mantiene vivas las propiedades del nodo
     // (volumen/mute) y el slider no reflejaría cambios hechos por fuera.
     PwObjectTracker { objects: popup.sink ? [popup.sink] : [] }
+    // Salidas físicas (sin streams de apps), para elegir la predeterminada.
+    readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream && n.audio)
+    function sinkLabel(n) { return n.description || n.nickname || n.name }
+    function sinkIcon(n) {
+        return /auricular|headphone|headset|cascos/i.test(popup.sinkLabel(n))
+            ? "audio-headphones-symbolic" : "audio-speakers-symbolic"
+    }
+
+    // ---- Herramientas opcionales ----
+    // La luz nocturna usa hyprsunset y el modo de energía,
+    // power-profiles-daemon. Si no están, sus controles se ven
+    // deshabilitados (no ocultos) y dicen qué falta.
+    property bool hasSunset: false
+    property bool sunsetOn: false
+    property bool hasProfiles: false
+    Process {
+        id: probe
+        command: ["sh", "-c",
+            "command -v hyprsunset >/dev/null && echo sunset; " +
+            "pgrep -x hyprsunset >/dev/null && echo sunset-on; " +
+            "busctl --system list 2>/dev/null | grep -qE 'net.hadess.PowerProfiles|org.freedesktop.UPower.PowerProfiles' && echo profiles; true"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var l = text.split("\n")
+                popup.hasSunset = l.indexOf("sunset") !== -1
+                popup.sunsetOn = l.indexOf("sunset-on") !== -1
+                popup.hasProfiles = l.indexOf("profiles") !== -1
+            }
+        }
+    }
+    // Tras prender/apagar hyprsunset se relee el estado real.
+    Timer { id: reprobe; interval: 300; onTriggered: probe.running = true }
+
+    // Captura de una región: se guarda en Imágenes/Capturas, se copia al
+    // portapapeles y avisa con una notificación (como GNOME).
+    function screenshot() {
+        popup.run(["sh", "-c",
+            "sleep 0.25; g=$(slurp) || exit 0; " +
+            ". \"${XDG_CONFIG_HOME:-$HOME/.config}/user-dirs.dirs\" 2>/dev/null; " +
+            "d=\"${XDG_PICTURES_DIR:-$HOME/Pictures}/Capturas\"; mkdir -p \"$d\"; " +
+            "f=\"$d/Captura_$(date +%Y-%m-%d_%H-%M-%S).png\"; " +
+            "grim -g \"$g\" \"$f\" && wl-copy < \"$f\" && " +
+            "notify-send -a 'Captura de pantalla' -i \"$f\" 'Captura guardada' 'También se copió al portapapeles'"])
+    }
 
     // ---- Batería ----
     readonly property var battery: UPower.displayDevice
@@ -127,6 +175,10 @@ PopupCard {
         Item { Layout.fillWidth: true }
 
         IconButton {
+            icon: "applets-screenshooter-symbolic"
+            onClicked: popup.screenshot()
+        }
+        IconButton {
             icon: "preferences-system-symbolic"
             onClicked: popup.run(["gnome-control-center"])
         }
@@ -183,6 +235,44 @@ PopupCard {
         value: popup.audio ? popup.audio.volume : 0
         onValueEdited: v => Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", v.toFixed(2)])
         onIconClicked: Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+        expandable: popup.sinks.length > 1
+        expanded: popup.outputsOpen
+        onExpandClicked: popup.outputsOpen = !popup.outputsOpen
+    }
+
+    // ---- Salidas de audio (se despliega bajo el slider de volumen) ----
+    Item {
+        width: parent.width
+        height: popup.outputsOpen ? outputsCol.implicitHeight : 0
+        visible: height > 0
+        clip: true
+        Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        Rectangle {
+            width: parent.width
+            height: outputsCol.implicitHeight
+            radius: Theme.radius - 2
+            color: Theme.cardBg
+
+            Column {
+                id: outputsCol
+                width: parent.width
+                topPadding: 4
+                bottomPadding: 4
+                Repeater {
+                    model: popup.sinks
+                    delegate: ActionRow {
+                        required property var modelData
+                        readonly property bool current: popup.sink === modelData
+                        width: outputsCol.width
+                        icon: current ? "object-select-symbolic" : popup.sinkIcon(modelData)
+                        label: popup.sinkLabel(modelData)
+                        tint: current ? Theme.accent : Theme.fg
+                        onClicked: Pipewire.preferredDefaultAudioSink = modelData
+                    }
+                }
+            }
+        }
     }
     SliderRow {
         width: parent.width
@@ -253,5 +343,50 @@ PopupCard {
             checked: Caffeine.enabled
             onToggled: value => Caffeine.enabled = value
         }
+        QuickToggle {
+            Layout.fillWidth: true
+            Layout.preferredWidth: 1
+            enabled: popup.hasSunset
+            icon: "night-light-symbolic"
+            label: "Luz nocturna"
+            sublabel: !popup.hasSunset ? "No instalada" : popup.sunsetOn ? "Activada" : "Desactivada"
+            checked: popup.sunsetOn
+            onToggled: value => {
+                Quickshell.execDetached(value ? ["hyprsunset", "-t", "4000"] : ["pkill", "-x", "hyprsunset"])
+                reprobe.restart()
+            }
+        }
+    }
+
+    // =================================================================
+    // Modo de energía
+    // =================================================================
+    SectionLabel { text: "Modo de energía" }
+    SegmentedControl {
+        width: parent.width
+        enabled: popup.hasProfiles
+        opacity: enabled ? 1 : 0.4
+        model: {
+            var m = [
+                { label: "Ahorro", value: String(PowerProfile.PowerSaver) },
+                { label: "Equilibrado", value: String(PowerProfile.Balanced) }
+            ]
+            // Sin el daemon no se toca PowerProfiles: acceder lo intenta
+            // levantar y llena el log de avisos.
+            if (popup.hasProfiles && PowerProfiles.hasPerformanceProfile)
+                m.push({ label: "Rendimiento", value: String(PowerProfile.Performance) })
+            return m
+        }
+        current: popup.hasProfiles ? String(PowerProfiles.profile) : ""
+        onSelected: value => PowerProfiles.profile = parseInt(value)
+    }
+    Text {
+        visible: !popup.hasProfiles
+        width: parent.width
+        leftPadding: 4
+        text: "Requiere power-profiles-daemon"
+        color: Theme.fgDim
+        font.family: Theme.fontFamily
+        font.pixelSize: 10
     }
 }

@@ -10,8 +10,12 @@ Item {
     property real value: 0 // 0..1
     property bool muted: false
     property bool showValue: true
+    // Flecha al final para desplegar algo debajo (p. ej. salidas de audio).
+    property bool expandable: false
+    property bool expanded: false
     signal valueEdited(real v)
     signal iconClicked
+    signal expandClicked
 
     implicitHeight: 36
 
@@ -95,6 +99,19 @@ Item {
             font.family: Theme.fontFamily
             font.pixelSize: 11
             font.features: { "tnum": 1 }
+        }
+
+        IconButton {
+            visible: root.expandable
+            Layout.alignment: Qt.AlignVCenter
+            implicitWidth: 28
+            implicitHeight: 28
+            iconSize: 12
+            icon: "pan-end-symbolic"
+            checked: root.expanded
+            rotation: root.expanded ? 90 : 0
+            Behavior on rotation { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            onClicked: root.expandClicked()
         }
     }
 }
