@@ -12,7 +12,8 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell:toast"
     WlrLayershell.layer: WlrLayer.Overlay
     anchors.bottom: true
-    margins.bottom: 64
+    // Por encima del dock (64 px + 8 de margen) cuando está visible.
+    margins.bottom: 88
     exclusiveZone: 0
     focusable: false
     color: "transparent"

@@ -20,7 +20,8 @@ PanelWindow {
     WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     visible: PopupManager.current === "screenshot"
     anchors.bottom: true
-    margins.bottom: 40
+    // Por encima del dock (64 px + 8 de margen) cuando está visible.
+    margins.bottom: 88
     exclusiveZone: 0
     color: "transparent"
     implicitWidth: 420
